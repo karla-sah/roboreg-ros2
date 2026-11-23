@@ -138,8 +138,14 @@ class JointStateCollectable(Collectable[JointState]):
     def __init__(self, msg: JointState):
         super().__init__(msg)
 
-    def to_numpy(self) -> np.ndarray:
-        return np.array(self._msg.position)[np.argsort(self._msg.name)]
+    def to_numpy(self, joint_names: list[str] | None = None) -> np.ndarray:
+        if joint_names is None:
+            return np.array(self._msg.position)[np.argsort(self._msg.name)]
+        positions = dict(zip(self._msg.name, self._msg.position))
+        missing = [name for name in joint_names if name not in positions]
+        if missing:
+            raise ValueError(f"Joint state is missing chain joints: {missing}")
+        return np.array([positions[name] for name in joint_names])
 
     def to_disk(self, path: pathlib.Path, filename: str, mkdir: bool = True):
         super().to_disk(path, filename=filename, mkdir=mkdir)

@@ -4,6 +4,7 @@ from roboreg.io import load_robot_data_from_ros_robot_description
 from roboreg_base.monocular_depth_node import (
     MonocularDepthNode as MonocularDepthNodeBase,
 )
+from roboreg_base.robot_description import chain_joint_names, to_package_uris
 from roboreg_idl.srv import RegHydraRobustICP
 
 from .util.hydra_robust_icp import run_hydra_robust_icp
@@ -25,11 +26,12 @@ class MonocularDepthNode(MonocularDepthNodeBase):
         res.success = True
         try:
             robot_data = load_robot_data_from_ros_robot_description(
-                urdf=self._robot_description,
+                urdf=to_package_uris(self._robot_description),
                 root_link_name=self._robot_data_params.root_link_name,
                 end_link_name=self._robot_data_params.end_link_name,
                 collision=self._robot_data_params.collision_meshes,
             )
+            joint_names = chain_joint_names(robot_data)
             images = [
                 collectables["camera.image"].to_numpy()
                 for collectables in self._data_collector.collectables_history
@@ -43,7 +45,7 @@ class MonocularDepthNode(MonocularDepthNodeBase):
                 "camera.depth.camera_info"
             ].to_numpy()
             joint_states = [
-                collectables["joint_states"].to_numpy()
+                collectables["joint_states"].to_numpy(joint_names=joint_names)
                 for collectables in self._data_collector.collectables_history
             ]
             result = run_hydra_robust_icp(
